@@ -2,13 +2,11 @@ import requests
 import os
 from dotenv import load_dotenv
 
-# Muat token dari file .env
 load_dotenv()
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-# Debug untuk memastikan token dan chat ID terbaca
 print("✅ DEBUG TOKEN:", TELEGRAM_BOT_TOKEN)
 print("✅ DEBUG CHAT_ID:", TELEGRAM_CHAT_ID)
 
@@ -33,9 +31,12 @@ def get_token_list():
     except:
         return []
 
-print("🔍 Mengambil 3 token terbaru dari Pump.fun...")
+print("🔍 Mengambil token dari Pump.fun...")
 
-tokens = get_token_list()[:3]  # Ambil 3 token pertama
+tokens = get_token_list()
+print(f"📦 Token ditemukan: {len(tokens)}")
+
+tokens = tokens[:3]  # ambil 3 token pertama
 
 for token in tokens:
     name = token["name"]
