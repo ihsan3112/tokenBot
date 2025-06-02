@@ -1,73 +1,60 @@
-import requests
 import os
 import time
-import json
-from datetime import datetime, timedelta
+import requests
+from bs4 import BeautifulSoup
+from dotenv import load_dotenv
 
-import logging
-logging.basicConfig(level=logging.INFO)
+load_dotenv()
 
-# Telegram Setup
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+CHAT_ID = os.getenv("CHAT_ID")
+
+PUMPFUN_URL = "https://pump.fun/"
+
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36"
+}
 
 
-def send_telegram(message):
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": message,
-        "parse_mode": "HTML"
-    }
+def get_tokens_from_html():
     try:
-        response = requests.post(url, data=payload)
-        logging.info(f"[TELEGRAM] {response.text}")
+        res = requests.get(PUMPFUN_URL, headers=headers, timeout=10)
+        soup = BeautifulSoup(res.text, "html.parser")
+        token_links = soup.find_all("a", href=lambda href: href and href.startswith("/coin/"))
+        token_urls = [PUMPFUN_URL + link['href'] for link in token_links]
+        return token_urls[:10]
     except Exception as e:
-        logging.error(f"[ERROR] Gagal kirim ke Telegram: {e}")
-
-
-def get_recent_tokens():
-    try:
-        url = "https://pump.fun/api/market"
-        headers = {
-            "User-Agent": "Mozilla/5.0",
-            "Accept": "application/json"
-        }
-        resp = requests.get(url, headers=headers)
-        data = resp.json()
-
-        now = datetime.utcnow()
-        threshold = now - timedelta(minutes=5)  # Token < 5 menit
-
-        found = []
-        for item in data.get("coins", []):
-            timestamp = datetime.utcfromtimestamp(item.get("launched_at", 0))
-            if timestamp > threshold:
-                token_address = item.get("address")
-                name = item.get("name", "-")
-                buyers = item.get("buyer_count", 0)
-                url = f"https://pump.fun/coin/{token_address}"
-                found.append((name, buyers, url))
-
-        return found
-    except Exception as e:
-        logging.error(f"[ERROR] Gagal ambil data JSON Pump.fun: {e}")
+        print("[ERROR] Gagal scraping HTML Pump.fun:", e)
         return []
 
 
-if __name__ == "__main__":
-    logging.info("[BOT] Memulai scanning real-time token dari Pump.fun...\n")
-    sent = set()
-    while True:
-        tokens = get_recent_tokens()
-        for name, buyers, url in tokens:
-            if url in sent:
-                continue
-            sent.add(url)
-            message = f"<b>🚀 Token Baru Terdeteksi!</b>\n" \
-                      f"<b>Nama:</b> {name}\n" \
-                      f"<b>Buyers:</b> {buyers}\n" \
-                      f"<b>Link:</b> {url}"
-            send_telegram(message)
+def send_telegram(message):
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": CHAT_ID,
+            "text": message,
+            "disable_web_page_preview": True
+        }
+        res = requests.post(url, json=payload)
+        if res.status_code == 200:
+            print("[SUKSES] Terkirim ke Telegram")
+        else:
+            print("[GAGAL] Kirim ke Telegram:", res.text)
+    except Exception as e:
+        print("[ERROR] Gagal kirim Telegram:", e)
 
-        time.sleep(20)
+
+def main():
+    print("🔍 Memulai scraping token real-time dari Pump.fun...")
+    tokens = get_tokens_from_html()
+    if not tokens:
+        print("[INFO] Tidak ada token ditemukan.")
+        return
+
+    message = "\n".join([f"👉 {url}" for url in tokens])
+    send_telegram(f"🆕 Token Baru Pump.fun:\n{message}")
+
+
+if __name__ == "__main__":
+    main()
