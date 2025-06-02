@@ -4,17 +4,17 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 
-# ========== LOAD .env ==========
+# ========== MEMUAT TOKEN & CHAT ID DARI .env ==========
 load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-# ========== KONFIGURASI FILTER ==========
-SCAN_INTERVAL = 5             # Detik antar scan token baru
-ANALYSIS_DELAY = 90           # Detik jeda analisa ulang
-MIN_BUYERS = 11               # Minimal buyer akhir
-MIN_VOLUME_SOL = 3.0          # Minimal volume dalam SOL
-MIN_AVG_PER_WALLET = 0.05     # Rata-rata buy per wallet (SOL)
+# ========== FILTER KONFIGURASI ==========
+SCAN_INTERVAL = 5
+ANALYSIS_DELAY = 90
+MIN_BUYERS = 11
+MIN_VOLUME_SOL = 3.0
+MIN_AVG_PER_WALLET = 0.05
 
 token_cache = {}
 
@@ -27,9 +27,10 @@ def send_telegram_message(text):
         "disable_web_page_preview": True
     }
     try:
-        requests.post(url, data=payload)
+        response = requests.post(url, data=payload)
+        print("Telegram status:", response.status_code, response.text)
     except Exception as e:
-        print("Gagal kirim ke Telegram:", e)
+        print("Telegram error:", e)
 
 def get_token_list():
     try:
@@ -62,8 +63,6 @@ Rata-rata Buy/Wallet: {avg_per_wallet:.2f} SOL
 URL: [Lihat di Pump.fun](https://pump.fun/{token['id']})
 """
         send_telegram_message(message.strip())
-
-# ========== LOOP UTAMA ==========
 
 print("⏳ Memulai scanner Pump.fun...")
 
