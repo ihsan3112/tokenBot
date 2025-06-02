@@ -1,57 +1,57 @@
-import requests
 import os
+import time
+import requests
+from bs4 import BeautifulSoup
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
 
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
+SENT_TOKENS = {}
+PUMPFUN_URL = "https://pump.fun"
 
-print("✅ DEBUG TOKEN:", TELEGRAM_BOT_TOKEN)
-print("✅ DEBUG CHAT_ID:", TELEGRAM_CHAT_ID)
-
-def send_telegram_message(text):
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": text,
-        "parse_mode": "Markdown",
-        "disable_web_page_preview": True
-    }
+def get_new_tokens():
     try:
-        response = requests.post(url, data=payload)
-        print("📤 Telegram status:", response.status_code, response.text)
+        response = requests.get(PUMPFUN_URL, timeout=10)
+        soup = BeautifulSoup(response.text, "html.parser")
+        token_links = soup.find_all("a", href=lambda href: href and href.startswith("/coin/"))
+        token_urls = [PUMPFUN_URL + link['href'] for link in token_links]
+        return token_urls[:10]  # ambil 10 token terbaru
     except Exception as e:
-        print("❌ Telegram error:", e)
-
-def get_token_list():
-    try:
-        res = requests.get("https://pump.fun/api/token/list?sort=recent")
-        return res.json()
-    except:
+        print(f"[ERROR] Gagal scraping Pump.fun: {e}")
         return []
 
-print("🔍 Mengambil token dari Pump.fun (sinkron dengan Memory 3)...")
+def send_telegram_message(message):
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        payload = {"chat_id": CHAT_ID, "text": message, "disable_web_page_preview": True}
+        res = requests.post(url, json=payload)
+        if res.status_code == 200:
+            print("[✅] Terkirim ke Telegram")
+        else:
+            print(f"[❌] Gagal kirim Telegram: {res.text}")
+    except Exception as e:
+        print(f"[ERROR] Telegram Error: {e}")
 
-tokens = get_token_list()
-print(f"📦 Token ditemukan: {len(tokens)}")
+def main():
+    print("Bot Pump.fun Logika3 Realtime Scanner dimulai...")
+    while True:
+        tokens = get_new_tokens()
+        now = datetime.utcnow()
 
-tokens = tokens[:3]  # Ambil 3 token pertama
+        for token_url in tokens:
+            if token_url not in SENT_TOKENS:
+                SENT_TOKENS[token_url] = now
+                message = f"🚀 Token Baru Terdeteksi:\n{token_url}"
+                send_telegram_message(message)
+            else:
+                # Token sudah dikirim lebih dari 5 menit lalu? Reset
+                if now - SENT_TOKENS[token_url] > timedelta(minutes=5):
+                    del SENT_TOKENS[token_url]
 
-for token in tokens:
-    name = token["metadata"]["name"]
-    token_id = token["id"]
-    buyer_count = token["buyerCount"]
-    volume_sol = token["volume"] / 1e9
+        time.sleep(5)
 
-    message = f"""
-🔔 *Token Terbaru Sinkron Memory 3*
-
-Nama: *${name}*
-Buyer: {buyer_count}
-Volume: {volume_sol:.2f} SOL
-URL: [Lihat Token](https://pump.fun/{token_id})
-"""
-    send_telegram_message(message.strip())
-
-print("✅ Selesai. Bot berhenti.")
+if __name__ == "__main__":
+    main()
