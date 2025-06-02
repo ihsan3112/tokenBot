@@ -2,10 +2,15 @@ import requests
 import os
 from dotenv import load_dotenv
 
+# Muat token dari file .env
 load_dotenv()
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+
+# Debug untuk memastikan token dan chat ID terbaca
+print("✅ DEBUG TOKEN:", TELEGRAM_BOT_TOKEN)
+print("✅ DEBUG CHAT_ID:", TELEGRAM_CHAT_ID)
 
 def send_telegram_message(text):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -17,9 +22,9 @@ def send_telegram_message(text):
     }
     try:
         response = requests.post(url, data=payload)
-        print("Telegram status:", response.status_code, response.text)
+        print("📤 Telegram status:", response.status_code, response.text)
     except Exception as e:
-        print("Telegram error:", e)
+        print("❌ Telegram error:", e)
 
 def get_token_list():
     try:
