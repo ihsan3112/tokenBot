@@ -26,26 +26,26 @@ def send_telegram_message(text):
 
 def get_token_list():
     try:
-        res = requests.get("https://pump.fun/api/tokens")
+        res = requests.get("https://pump.fun/api/token/list?sort=recent")
         return res.json()
     except:
         return []
 
-print("🔍 Mengambil token dari Pump.fun...")
+print("🔍 Mengambil token dari Pump.fun (sinkron dengan Memory 3)...")
 
 tokens = get_token_list()
 print(f"📦 Token ditemukan: {len(tokens)}")
 
-tokens = tokens[:3]  # ambil 3 token pertama
+tokens = tokens[:3]  # Ambil 3 token pertama
 
 for token in tokens:
-    name = token["name"]
+    name = token["metadata"]["name"]
     token_id = token["id"]
     buyer_count = token["buyerCount"]
     volume_sol = token["volume"] / 1e9
 
     message = f"""
-🔔 *Token Terbaru*
+🔔 *Token Terbaru Sinkron Memory 3*
 
 Nama: *${name}*
 Buyer: {buyer_count}
