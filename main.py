@@ -1,23 +1,21 @@
 import time
 import requests
+import os
 from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ========== KONFIGURASI ==========
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+SCAN_INTERVAL = 5
+ANALYSIS_DELAY = 90
+MIN_BUYERS = 11
+MIN_VOLUME_SOL = 3.0
+MIN_AVG_PER_WALLET = 0.05
 
-TELEGRAM_BOT_TOKEN = "8003185533:AAHPaj2UvoG7MC-PcTSoaXaqYcdw-dPR-Tg"
-TELEGRAM_CHAT_ID = "7806614019"
-
-SCAN_INTERVAL = 5             # Detik antar scan token baru
-ANALYSIS_DELAY = 90           # Detik jeda analisa ulang
-MIN_BUYERS = 11               # Minimal buyer
-MIN_VOLUME_SOL = 3.0          # Minimal volume dalam SOL
-MIN_AVG_PER_WALLET = 0.05     # Rata-rata buy per wallet
-
-# ========== PENYIMPANAN ==========
-
-token_cache = {}  # token_id -> {snapshot_awal, timestamp}
-
-# ========== FUNGSI ==========
+token_cache = {}
 
 def send_telegram_message(text):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -74,7 +72,7 @@ while True:
         created_time = datetime.fromtimestamp(token["created"])
         age_sec = (now - created_time).total_seconds()
 
-        if age_sec <= 300:  # Token baru ≤ 5 menit
+        if age_sec <= 300:
             if token_id not in token_cache:
                 token_cache[token_id] = {
                     "token": token,
@@ -85,7 +83,6 @@ while True:
                     "timestamp": now
                 }
 
-    # Cek token yang sudah waktunya dianalisa
     to_delete = []
     for token_id, entry in token_cache.items():
         elapsed = (now - entry["timestamp"]).total_seconds()
@@ -103,7 +100,6 @@ while True:
 
             to_delete.append(token_id)
 
-    # Bersihkan cache yang sudah dianalisis
     for token_id in to_delete:
         del token_cache[token_id]
 
